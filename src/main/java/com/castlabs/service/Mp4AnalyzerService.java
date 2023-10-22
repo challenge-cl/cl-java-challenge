@@ -1,18 +1,40 @@
-package com.castlabs.isobmff;
+package com.castlabs.service;
 
+import com.castlabs.isobmff.Box;
+import com.castlabs.isobmff.BoxNode;
+import com.castlabs.isobmff.ISOBmff;
+import org.springframework.stereotype.Service;
+
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 
-public class Mp4Analyzer {
+@Service
+public class Mp4AnalyzerService {
 
-    private static String readBoxType(RandomAccessFile file) throws IOException {
+    private String readBoxType(RandomAccessFile file) throws IOException {
         var typeBytes = new byte[4];
         file.readFully(typeBytes);
         return new String(typeBytes, StandardCharsets.UTF_8);
     }
 
-    public static ISOBmff analyzeMp4(RandomAccessFile file) throws IOException {
+    public ISOBmff analyzeMp4(String url) throws URISyntaxException, IOException {
+        try (var readableByteChannel = Channels.newChannel(new URI(url).toURL().openStream());
+             var fileOutputStream = new FileOutputStream("tmp");
+             var fileChannel = fileOutputStream.getChannel()) {
+            fileChannel.transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
+        }
+
+        // Create a RandomAccessFile from the local file
+        var randomAccessFile = new RandomAccessFile("tmp", "r");
+        return analyzeMp4(randomAccessFile);
+    }
+
+    protected ISOBmff analyzeMp4(RandomAccessFile file) throws IOException {
         var fileSize = file.length();
         var isoBmff = new ISOBmff();
         BoxNode parentNode = null;

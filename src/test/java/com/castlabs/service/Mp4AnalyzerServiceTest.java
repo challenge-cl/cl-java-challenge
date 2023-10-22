@@ -1,5 +1,6 @@
-package com.castlabs.isobmff;
+package com.castlabs.service;
 
+import com.castlabs.isobmff.ISOBmff;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
@@ -7,35 +8,13 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-public class Mp4AnalyzerTest {
+public class Mp4AnalyzerServiceTest {
 
     @Test
-    public void testAnalyzeMp4_SingleTopLevelBox() {
-        // Create a test MP4 file with a single top-level 'moov' box
-        // Test that the 'moov' box is correctly identified and stored as a top-level box
-        // Assert that the 'moov' box is a top-level box
-        // Assert that there is only one top-level box
-    }
-
-    @Test
-    public void testAnalyzeMP4_MultipleTopLevelBoxes() {
-        // Create a test MP4 file with multiple top-level 'moov' boxes
-        // Test that all 'moov' boxes are correctly identified and stored as top-level boxes
-        // Assert that all 'moov' boxes are top-level boxes
-        // Assert that there are multiple top-level boxes
-    }
-
-    @Test
-    public void testAnalyzeMP4_HierarchicalBoxes() {
-        // Create a test MP4 file with a hierarchical structure of boxes
-        // Test that the hierarchy is correctly created
-        // Assert the hierarchical relationships between parent and child boxes
-    }
-
-    @Test
-    public void testAnalyzeMP4_ComplexStructure() throws IOException {
+    public void testAnalyzeMP4() throws IOException {
+        var mp4Analyzer = new Mp4AnalyzerService();
         RandomAccessFile file = new RandomAccessFile(getClass().getClassLoader().getResource("text0.mp4").getFile(), "r");
-        ISOBmff mp4 = Mp4Analyzer.analyzeMp4(file);
+        ISOBmff mp4 = mp4Analyzer.analyzeMp4(file);
         assertEquals(2, mp4.getBoxNodes().size());
 
         //Assert moof box
