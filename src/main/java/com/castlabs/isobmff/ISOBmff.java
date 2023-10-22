@@ -1,9 +1,12 @@
 package com.castlabs.isobmff;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class ISOBmff {
+    @JsonProperty("boxes")
     private final List<BoxNode> boxNodes;
 
     public ISOBmff() {
