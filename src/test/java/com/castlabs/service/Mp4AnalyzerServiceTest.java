@@ -5,16 +5,20 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.InputStream;
+import java.nio.channels.Channels;
 
 public class Mp4AnalyzerServiceTest {
 
     @Test
     public void testAnalyzeMP4() throws IOException {
         var mp4Analyzer = new Mp4AnalyzerService();
-        RandomAccessFile file = new RandomAccessFile(getClass().getClassLoader().getResource("text0.mp4").getFile(), "r");
-        ISOBmff mp4 = mp4Analyzer.analyzeMp4(file);
+        var testFile = getClass().getClassLoader().getResource("text0.mp4").getFile();
+        InputStream is = new FileInputStream(testFile);
+        var channel = Channels.newChannel(is);
+        ISOBmff mp4 = mp4Analyzer.analyzeMp4(channel);
         assertEquals(2, mp4.getBoxNodes().size());
 
         //Assert moof box

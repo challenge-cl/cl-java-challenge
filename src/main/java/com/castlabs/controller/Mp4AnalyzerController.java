@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -23,8 +24,7 @@ public class Mp4AnalyzerController {
     }
 
     @GetMapping
-    public ISOBmff analyzeFile(@RequestParam String url) throws IOException, URISyntaxException {
-        // You can now use the RandomAccessFile for your needs
-        return analyzer.analyzeMp4(url);
+    public Mono<ISOBmff> analyzeFile(@RequestParam String url) throws IOException, URISyntaxException {
+        return Mono.just(analyzer.analyzeMp4(url));
     }
 }

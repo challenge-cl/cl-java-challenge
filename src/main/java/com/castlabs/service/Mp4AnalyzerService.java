@@ -5,59 +5,69 @@ import com.castlabs.isobmff.BoxNode;
 import com.castlabs.isobmff.ISOBmff;
 import org.springframework.stereotype.Service;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 
 @Service
 public class Mp4AnalyzerService {
 
-    private String readBoxType(RandomAccessFile file) throws IOException {
-        var typeBytes = new byte[4];
-        file.readFully(typeBytes);
-        return new String(typeBytes, StandardCharsets.UTF_8);
+    private String readBoxType(ReadableByteChannel channel) throws IOException {
+        ByteBuffer typeBytes = ByteBuffer.allocate(4);
+        channel.read(typeBytes);
+        typeBytes.flip();
+        return StandardCharsets.UTF_8.decode(typeBytes).toString();
     }
 
     public ISOBmff analyzeMp4(String url) throws URISyntaxException, IOException {
-        try (var readableByteChannel = Channels.newChannel(new URI(url).toURL().openStream());
-             var fileOutputStream = new FileOutputStream("tmp");
-             var fileChannel = fileOutputStream.getChannel()) {
-            fileChannel.transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
+        try (var channel = Channels.newChannel(new URI(url).toURL().openStream())) {
+            return analyzeMp4(channel);
         }
-
-        // Create a RandomAccessFile from the local file
-        var randomAccessFile = new RandomAccessFile("tmp", "r");
-        return analyzeMp4(randomAccessFile);
     }
 
-    protected ISOBmff analyzeMp4(RandomAccessFile file) throws IOException {
-        var fileSize = file.length();
-        var isoBmff = new ISOBmff();
+    protected ISOBmff analyzeMp4(ReadableByteChannel channel) throws IOException {
+        ISOBmff isoBmff = new ISOBmff();
         BoxNode parentNode = null;
-        var parentNodeOffset = 0L;
-        while (file.getFilePointer() < fileSize) {
-            if (file.getFilePointer() >= parentNodeOffset) {
+        long parentNodeOffset = 0;
+        long totalBytesRead = 0;
+        var buff = ByteBuffer.allocate(4);
+        while (channel.read(buff) != -1) {
+            totalBytesRead += 4;
+            if (totalBytesRead >= parentNodeOffset) {
                 parentNode = null;
             }
-            var boxLength = file.readInt();
-            var boxType = readBoxType(file);
-            var box = new Box(boxType, boxLength);
-            var node = new BoxNode(box);
+            buff.flip();
+            int boxLength = buff.getInt();
+            buff.clear();
+            String boxType = readBoxType(channel);
+            totalBytesRead += 4;
+
+            Box box = new Box(boxType, boxLength);
+            BoxNode node = new BoxNode(box);
+
             if (parentNode == null) {
                 isoBmff.addBoxNode(node);
-                parentNodeOffset = file.getFilePointer() + box.getLength() - 8;
+                parentNodeOffset = totalBytesRead + box.getLength() - 8;
             } else {
                 parentNode.addChild(node);
             }
+
             switch (boxType) {
                 case "moof", "traf" -> parentNode = node;
-                default -> file.seek(file.getFilePointer() + boxLength - 8);
+                default -> {
+                    ByteBuffer skipBuffer = ByteBuffer.allocate(boxLength - 8);
+                    while (skipBuffer.hasRemaining()) {
+                        channel.read(skipBuffer);
+                    }
+                    totalBytesRead += (boxLength - 8);
+                }
             }
         }
         return isoBmff;
     }
+
 }
