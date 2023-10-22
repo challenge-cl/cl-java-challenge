@@ -2,13 +2,14 @@ package com.castlabs.isobmff;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 
 public class Mp4Analyzer {
 
     private static String readBoxType(RandomAccessFile file) throws IOException {
         var typeBytes = new byte[4];
         file.readFully(typeBytes);
-        return new String(typeBytes, "UTF-8");
+        return new String(typeBytes, StandardCharsets.UTF_8);
     }
 
     public static ISOBmff analyzeMp4(RandomAccessFile file) throws IOException {
@@ -23,7 +24,7 @@ public class Mp4Analyzer {
             var boxLength = file.readInt();
             var boxType = readBoxType(file);
             var box = new Box(boxType, boxLength);
-            var node = new BoxNode(box, parentNode);
+            var node = new BoxNode(box);
             if (parentNode == null) {
                 isoBmff.addBoxNode(node);
                 parentNodeOffset = file.getFilePointer() + box.getLength() - 8;
@@ -31,13 +32,8 @@ public class Mp4Analyzer {
                 parentNode.addChild(node);
             }
             switch (boxType) {
-                case "moof":
-                case "traf":
-                    parentNode = node;
-                    break;
-                default:
-                    file.seek(file.getFilePointer() + boxLength - 8);
-                    break;
+                case "moof", "traf" -> parentNode = node;
+                default -> file.seek(file.getFilePointer() + boxLength - 8);
             }
         }
         return isoBmff;

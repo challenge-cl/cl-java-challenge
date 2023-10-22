@@ -10,13 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
 
 @Controller
 @RestController
@@ -24,9 +21,8 @@ import java.nio.channels.FileChannel;
 public class Mp4AnalyzerController {
 
     @GetMapping
-    public ISOBmff analyzeFile(@RequestParam String url) throws IOException {
-        System.out.println("Analyzing mp4 file: " + url);
-        try (var readableByteChannel = Channels.newChannel(new URL(url).openStream());
+    public ISOBmff analyzeFile(@RequestParam String url) throws IOException, URISyntaxException {
+        try (var readableByteChannel = Channels.newChannel(new URI(url).toURL().openStream());
              var fileOutputStream = new FileOutputStream("tmp");
              var fileChannel = fileOutputStream.getChannel()) {
             fileChannel.transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
