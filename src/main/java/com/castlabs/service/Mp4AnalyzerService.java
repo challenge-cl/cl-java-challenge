@@ -16,11 +16,10 @@ import java.nio.charset.StandardCharsets;
 @Service
 public class Mp4AnalyzerService {
 
-    private String readBoxType(ReadableByteChannel channel) throws IOException {
-        ByteBuffer typeBytes = ByteBuffer.allocate(4);
-        channel.read(typeBytes);
-        typeBytes.flip();
-        return StandardCharsets.UTF_8.decode(typeBytes).toString();
+    private String readBoxType(ByteBuffer buff) throws IOException {
+        var typeBytes = new byte[4];
+        buff.get(typeBytes);
+        return new String(typeBytes, StandardCharsets.UTF_8);
     }
 
     public ISOBmff analyzeMp4(String url) throws URISyntaxException, IOException {
@@ -34,38 +33,46 @@ public class Mp4AnalyzerService {
         BoxNode parentNode = null;
         long parentNodeOffset = 0;
         long totalBytesRead = 0;
-        var buff = ByteBuffer.allocate(4);
+        var buff = ByteBuffer.allocate(8192);
         while (channel.read(buff) != -1) {
-            totalBytesRead += 4;
-            if (totalBytesRead >= parentNodeOffset) {
-                parentNode = null;
-            }
             buff.flip();
-            int boxLength = buff.getInt();
-            buff.clear();
-            String boxType = readBoxType(channel);
-            totalBytesRead += 4;
+            while(buff.remaining() >= 8) {
 
-            Box box = new Box(boxType, boxLength);
-            BoxNode node = new BoxNode(box);
+                if (totalBytesRead >= parentNodeOffset) {
+                    parentNode = null;
+                }
+                int boxLength = buff.getInt();
+                String boxType = readBoxType(buff);
+                totalBytesRead += 8;
 
-            if (parentNode == null) {
-                isoBmff.addBoxNode(node);
-                parentNodeOffset = totalBytesRead + box.getLength() - 8;
-            } else {
-                parentNode.addChild(node);
-            }
+                Box box = new Box(boxType, boxLength);
+                BoxNode node = new BoxNode(box);
 
-            switch (boxType) {
-                case "moof", "traf" -> parentNode = node;
-                default -> {
-                    ByteBuffer skipBuffer = ByteBuffer.allocate(boxLength - 8);
-                    while (skipBuffer.hasRemaining()) {
-                        channel.read(skipBuffer);
+                if (parentNode == null) {
+                    isoBmff.addBoxNode(node);
+                    parentNodeOffset = totalBytesRead + box.getLength() - 8;
+                } else {
+                    parentNode.addChild(node);
+                }
+
+                switch (boxType) {
+                    case "moof", "traf" -> parentNode = node;
+                    default -> {
+                        var bytesToSkip = boxLength - 8;
+                        if (buff.remaining() > bytesToSkip) {
+                            buff.position(buff.position() + bytesToSkip);
+                        } else {
+                            ByteBuffer skipBuffer = ByteBuffer.allocate(bytesToSkip - buff.remaining());
+                            buff.position(buff.position() + buff.remaining());
+                            while (skipBuffer.hasRemaining()) {
+                                channel.read(skipBuffer);
+                            }
+                        }
+                        totalBytesRead += bytesToSkip;
                     }
-                    totalBytesRead += (boxLength - 8);
                 }
             }
+            buff.compact();
         }
         return isoBmff;
     }

@@ -7,11 +7,15 @@ import com.castlabs.service.Mp4AnalyzerService;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -19,11 +23,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 
-@WebMvcTest(Mp4AnalyzerController.class)
+
+@ExtendWith(SpringExtension.class)
+@WebFluxTest(Mp4AnalyzerController.class)
 public class Mp4AnalyzerControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webClient;
 
     @MockBean
     private Mp4AnalyzerService mp4Analyzer;
@@ -52,28 +58,33 @@ public class Mp4AnalyzerControllerTest {
     void analyzeUrlShouldReturnAJsonRepresentationOfMp4Boxes() throws Exception {
         Mockito.when(mp4Analyzer.analyzeMp4(Mockito.anyString())).thenReturn(getMockedIsoBmff());
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/mp4/analyze")
+        webClient.get().uri(uriBuilder -> uriBuilder
+                        .path("/mp4/analyze")
+                        .queryParam("url", "http://fake-url.com/file.mp4")
+                        .build())
                 .accept(MediaType.APPLICATION_JSON)
-                .param("url", "http://fake-url.com/file.mp4")
-        ).andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(jsonPath("$.boxes", hasSize(2)))
-                .andExpect(jsonPath("$.boxes[0].box.type", is("moof")))
-                .andExpect(jsonPath("$.boxes[0].box.length", is(181)))
-                .andExpect(jsonPath("$.boxes[0].childs", hasSize(2)))
-                .andExpect(jsonPath("$.boxes[0].childs[0].box.type", is("mfhd")))
-                .andExpect(jsonPath("$.boxes[0].childs[0].box.length", is(16)))
-                .andExpect(jsonPath("$.boxes[0].childs[1].box.type", is("traf")))
-                .andExpect(jsonPath("$.boxes[0].childs[1].box.length", is(157)))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs", hasSize(4)))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[0].box.type", is("tfhd")))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[0].box.length", is(24)))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[1].box.type", is("trun")))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[1].box.length", is(20)))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[2].box.type", is("uuid")))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[2].box.length", is(44)))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[3].box.type", is("uuid")))
-                .andExpect(jsonPath("$.boxes[0].childs[1].childs[3].box.length", is(61)))
-                .andExpect(jsonPath("$.boxes[1].box.type", is("mdat")))
-                .andExpect(jsonPath("$.boxes[1].box.length", is(17908)));
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.boxes").value(hasSize(2))
+                .jsonPath("$.boxes[0].box.type").value(is("moof"))
+                .jsonPath("$.boxes[0].box.length").value(is(181))
+                .jsonPath("$.boxes[0].childs").value(hasSize(2))
+                .jsonPath("$.boxes[0].childs[0].box.type").value(is("mfhd"))
+                .jsonPath("$.boxes[0].childs[0].box.length").value(is(16))
+                .jsonPath("$.boxes[0].childs[1].box.type").value(is("traf"))
+                .jsonPath("$.boxes[0].childs[1].box.length").value(is(157))
+                .jsonPath("$.boxes[0].childs[1].childs").value(hasSize(4))
+                .jsonPath("$.boxes[0].childs[1].childs[0].box.type").value(is("tfhd"))
+                .jsonPath("$.boxes[0].childs[1].childs[0].box.length").value(is(24))
+                .jsonPath("$.boxes[0].childs[1].childs[1].box.type").value(is("trun"))
+                .jsonPath("$.boxes[0].childs[1].childs[1].box.length").value(is(20))
+                .jsonPath("$.boxes[0].childs[1].childs[2].box.type").value(is("uuid"))
+                .jsonPath("$.boxes[0].childs[1].childs[2].box.length").value(is(44))
+                .jsonPath("$.boxes[0].childs[1].childs[3].box.type").value(is("uuid"))
+                .jsonPath("$.boxes[0].childs[1].childs[3].box.length").value(is(61))
+                .jsonPath("$.boxes[1].box.type").value(is("mdat"))
+                .jsonPath("$.boxes[1].box.length").value(is(17908));
     }
 }
