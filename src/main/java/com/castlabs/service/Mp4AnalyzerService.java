@@ -33,7 +33,7 @@ public class Mp4AnalyzerService {
         BoxNode parentNode = null;
         long parentNodeOffset = 0;
         long totalBytesRead = 0;
-        var buff = ByteBuffer.allocate(8192);
+        var buff = ByteBuffer.allocate(1000000);
         while (channel.read(buff) != -1) {
             buff.flip();
             while(buff.remaining() >= 8) {
